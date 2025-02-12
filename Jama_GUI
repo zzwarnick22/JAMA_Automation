@@ -6,6 +6,12 @@ import requests
 from requests.auth import HTTPBasicAuth
 import json
 import paramiko
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Function to fetch test case details from JAMA
 def fetch_test_case(jama_url, username, api_token, test_case_id):
@@ -31,8 +37,44 @@ def execute_test_steps(test_steps):
         expected_result = step['fields']['expectedResult']
         
         print(f"Executing step: {action}")
-        # Here you would add the code to perform the action on your system
-        # For example, if the action is to open a file, you would add the code to open the file
+
+# Function to allow SSO
+def select_sso_option(url, sso_button_selector):
+    # Initialize the WebDriver (e.g., Chrome)
+    driver = webdriver.Chrome()  # Ensure chromedriver is in your PATH or provide the path to chromedriver
+
+    try:
+        # Navigate to the webpage
+        driver.get(url)
+
+        # Wait for the SSO button to be clickable
+        wait = WebDriverWait(driver, 10)
+        sso_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, sso_button_selector)))
+
+        # Click the SSO button
+        sso_button.click()
+
+        # Optionally, handle the SSO login process here
+        # For example, you might need to enter a username and password, or handle a redirect
+
+        # Wait for the login process to complete (this will vary based on the SSO implementation)
+        # Example: wait for a specific element to be present after login
+        # wait.until(EC.presence_of_element_located((By.ID, "some_element_id_after_login")))
+
+        print("SSO login process initiated successfully.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # Close the WebDriver
+        driver.quit()
+
+# Example usage
+if __name__ == "__main__":
+    url = "https://example.com/login"  # Replace with the URL of the login page
+    sso_button_selector = "button.sso-login"  # Replace with the CSS selector of the SSO button
+
+    select_sso_option(url, sso_button_selector)
 
 def ssh_connect_and_execute(hostname, port, username, password, command):
     try:
