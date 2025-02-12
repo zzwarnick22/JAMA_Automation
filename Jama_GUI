@@ -1,0 +1,132 @@
+# Created by Zachary Warnick 
+
+import tkinter as tk
+from tkinter import messagebox
+import requests
+from requests.auth import HTTPBasicAuth
+import json
+import paramiko
+
+# Function to fetch test case details from JAMA
+def fetch_test_case(jama_url, username, api_token, test_case_id):
+    url = f"{jama_url}/rest/latest/items/{test_case_id}"
+    auth = HTTPBasicAuth(username, api_token)
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.get(url, headers=headers, auth=auth)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        messagebox.showerror("Error", f"Failed to fetch test case: {response.status_code}\n{response.text}")
+        return None
+
+# Function to execute test steps
+def execute_test_steps(test_steps):
+    for step in test_steps:
+        action = step['fields']['action']
+        expected_result = step['fields']['expectedResult']
+        
+        print(f"Executing step: {action}")
+        # Here you would add the code to perform the action on your system
+        # For example, if the action is to open a file, you would add the code to open the file
+
+def ssh_connect_and_execute(hostname, port, username, password, command):
+    try:
+        # Create an SSH client
+        ssh_client = paramiko.SSHClient()
+        
+        # Automatically add the server's host key (not recommended for production)
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # Connect to the remote server
+        ssh_client.connect(hostname, port, username, password)
+        
+        # Execute the command
+        stdin, stdout, stderr = ssh_client.exec_command(command)
+        
+        # Read the output from stdout and stderr
+        output = stdout.read().decode()
+        error = stderr.read().decode()
+        
+        # Print the output and error
+        print("Output:")
+        print(output)
+        print("Error:")
+        print(error)
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # Close the SSH connection
+        ssh_client.close()
+
+# Example usage
+if __name__ == "__main__":
+    hostname = "your_remote_host"  # Replace with the remote host's address
+    port = 22  # Replace with the remote host's SSH port (default is 22)
+    username = "your_username"  # Replace with your SSH username
+    password = "your_password"  # Replace with your SSH password
+    command = "ls -l"  # Replace with the command you want to execute
+    
+    ssh_connect_and_execute(hostname, port, username, password, command)
+
+        
+        # Simulate the execution result
+        actual_result = "Simulated result"
+        
+        print(f"Expected result: {expected_result}")
+        print(f"Actual result: {actual_result}")
+        
+        if actual_result == expected_result:
+            print("Step passed")
+        else:
+            print("Step failed")
+
+# Function to handle the "Run Test Case" button click
+def run_test_case():
+    jama_url = entry_jama_url.get()
+    username = entry_username.get()
+    api_token = entry_api_token.get()
+    test_case_id = entry_test_case_id.get()
+    
+    if not jama_url or not username or not api_token or not test_case_id:
+        messagebox.showerror("Error", "All fields are required")
+        return
+    
+    test_case = fetch_test_case(jama_url, username, api_token, test_case_id)
+    
+    if test_case:
+        test_steps = test_case['fields']['testCaseSteps']
+        execute_test_steps(test_steps)
+
+# Create the main window
+root = tk.Tk()
+root.title("JAMA Test Case Automation")
+
+# Create and place the labels and entry widgets
+tk.Label(root, text="JAMA URL:").grid(row=0, column=0, padx=10, pady=5)
+entry_jama_url = tk.Entry(root, width=50)
+entry_jama_url.grid(row=0, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Username:").grid(row=1, column=0, padx=10, pady=5)
+entry_username = tk.Entry(root, width=50)
+entry_username.grid(row=1, column=1, padx=10, pady=5)
+
+tk.Label(root, text="API Token:").grid(row=2, column=0, padx=10, pady=5)
+entry_api_token = tk.Entry(root, width=50, show="*")
+entry_api_token.grid(row=2, column=1, padx=10, pady=5)
+
+tk.Label(root, text="Test Case ID:").grid(row=3, column=0, padx=10, pady=5)
+entry_test_case_id = tk.Entry(root, width=50)
+entry_test_case_id.grid(row=3, column=1, padx=10, pady=5)
+
+# Create and place the "Run Test Case" button
+btn_run_test_case = tk.Button(root, text="Run Test Case", command=run_test_case)
+btn_run_test_case.grid(row=4, column=0, columnspan=2, pady=10)
+
+# Start the main event loop
+root.mainloop()
