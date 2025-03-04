@@ -3,112 +3,60 @@
 import tkinter as tk
 import requests
 import json
-import paramiko 
+import paramiko
 import sqlite3
 import getpass
 from requests.auth import HTTPBasicAuth
 from tkinter import messagebox
-from selenium import webdriver 
-from selenium.webdriver.common.by import By 
-from selenium.webdriver.common.keys import Keys 
-from selenium.webdriver.common.action_chains import ActionChains 
-from selenium.webdriver.support.ui import WebDriverWait 
-from selenium.webdriver.support import expected_conditions as EC 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from sqlite3 import Error
 
 # Function to fetch test case details from JAMA
 def fetch_test_case(jama_url, username, api_token, test_case_id):
-    url = f"{jama_url}/rest/latest/items/{test_case_id}"
-    auth = HTTPBasicAuth(username, api_token)
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
-    
-    response = requests.get(url, headers=headers, auth=auth)
-    
+    response = requests.get(
+        f"{jama_url}/rest/latest/testcases/{test_case_id}",
+        auth=HTTPBasicAuth(username, api_token)
+    )
     if response.status_code == 200:
         return response.json()
     else:
-        messagebox.showerror("Error", f"Failed to fetch test case: {response.status_code}\n{response.text}")
+        print(f"Failed to fetch test case: {response.status_code}")
         return None
 
 # Function to execute test steps
 def execute_test_steps(test_steps):
     for step in test_steps:
-        action = step['fields']['action']
-        expected_result = step['fields']['expectedResult']
-        
+        action = step['action']
+        expected_result = step['expectedResult']
         print(f"Executing step: {action}")
+        # Simulate the execution result
+        actual_result = "Simulated result"
+        print(f"Expected result: {expected_result}")
+        print(f"Actual result: {actual_result}")
+        if actual_result == expected_result:
+            print("Step passed")
+        else:
+            print("Step failed")
 
 # Function to allow SSO
-
 def select_sso_option(url, sso_button_selector):
     # Initialize the WebDriver (e.g., Chrome)
     driver = webdriver.Chrome()  # Ensure chromedriver is in your PATH or provide the path to chromedriver
-
+    driver.get(url)
     try:
-        # Navigate to the webpage
-        driver.get(url)
-
-        # Wait for the SSO button to be clickable
-        wait = WebDriverWait(driver, 10)
-        sso_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, sso_button_selector)))
-
-        # Click the SSO button
+        sso_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, sso_button_selector))
+        )
         sso_button.click()
-
-        # Optionally, handle the SSO login process here
-        # For example, you might need to enter a username and password, or handle a redirect
-
-        # Wait for the login process to complete (this will vary based on the SSO implementation)
-        # Example: wait for a specific element to be present after login
-        # wait.until(EC.presence_of_element_located((By.ID, "some_element_id_after_login")))
-
-        print("SSO login process initiated successfully.")
-
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"Error: {e}")
     finally:
-        # Close the WebDriver
         driver.quit()
-
-# Example usage
-if __name__ == "__main__":
-    url = "google.com"  # Replace with the URL of the login page
-    sso_button_selector = "button.sso-login"  # Replace with the CSS selector of the SSO button
-
-    select_sso_option(url, sso_button_selector)
-
-def ssh_connect_and_execute(hostname, port, username, password, command):
-    try:
-        # Create an SSH client
-        ssh_client = paramiko.SSHClient()
-        
-        # Automatically add the server's host key (not recommended for production)
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
-        # Connect to the remote server
-        ssh_client.connect(hostname, port, username, password)
-        
-        # Execute the command
-        stdin, stdout, stderr = ssh_client.exec_command(command)
-        
-        # Read the output from stdout and stderr
-        output = stdout.read().decode()
-        error = stderr.read().decode()
-        
-        # Print the output and error
-        print("Output:")
-        print(output)
-        print("Error:")
-        print(error)
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        # Close the SSH connection
-        ssh_client.close()
 
 # Function to create a database connection
 def create_connection(db_file):
@@ -162,25 +110,37 @@ def select_all_users(conn):
     except Error as e:
         print(f"Error: {e}")
 
-# Main function
+# Function to handle the "Run Test Case" button click
+def run_test_case():
+    jama_url = entry_jama_url.get()
+    username = entry_username.get()
+    api_token = entry_api_token.get()
+    test_case_id = entry_test_case_id.get()
+   
+    if not jama_url or not username or not api_token or not test_case_id:
+        messagebox.showerror("Error", "All fields are required")
+        return
+    
+    test_case = fetch_test_case(jama_url, username, api_token, test_case_id)
+    
+    if test_case:
+        test_steps = test_case['fields']['testCaseSteps']
+        execute_test_steps(test_steps)
+
+# Main function for database operations
 def main():
     database = "users.db"
-
     # Create a database connection
     conn = create_connection(database)
-
     if conn is not None:
         # Create users table
         create_table(conn)
-
         while True:
             print("\nOptions:")
             print("1. Add new user")
             print("2. View all users")
             print("3. Exit")
-
             choice = input("Enter your choice: ")
-
             if choice == '1':
                 username = input("Enter username: ")
                 password = getpass.getpass("Enter password: ")
@@ -191,53 +151,10 @@ def main():
                 break
             else:
                 print("Invalid choice. Please try again.")
-
         # Close the database connection
         conn.close()
     else:
         print("Error! Cannot create the database connection.")
-
-if __name__ == "__main__":
-    main()
-
-# Example usage
-if __name__ == "__main__":
-    hostname = "your_remote_host"  # Replace with the remote host's address
-    port = 22  # Replace with the remote host's SSH port (default is 22)
-    username = "your_username"  # Replace with your SSH username
-    password = "your_password"  # Replace with your SSH password
-    command = "ls -l"  # Replace with the command you want to execute
-    
-    ssh_connect_and_execute(hostname, port, username, password, command)
-
-        
-        # Simulate the execution result
-    actual_result = "Simulated result"
-        
-    print(f"Expected result: {expected_result}")
-    print(f"Actual result: {actual_result}")
-        
-    if actual_result == expected_result:
-            print("Step passed")
-    else:
-            print("Step failed")
-
-# Function to handle the "Run Test Case" button click
-def run_test_case():
-    jama_url = entry_jama_url.get()
-    username = entry_username.get()
-    api_token = entry_api_token.get()
-    test_case_id = entry_test_case_id.get()
-    
-    if not jama_url or not username or not api_token or not test_case_id:
-        messagebox.showerror("Error", "All fields are required")
-        return
-    
-    test_case = fetch_test_case(jama_url, username, api_token, test_case_id)
-    
-    if test_case:
-        test_steps = test_case['fields']['testCaseSteps']
-        execute_test_steps(test_steps)
 
 # Create the main window
 root = tk.Tk()
@@ -266,3 +183,6 @@ btn_run_test_case.grid(row=4, column=0, columnspan=2, pady=10)
 
 # Start the main event loop
 root.mainloop()
+
+if __name__ == "__main__":
+    main()
